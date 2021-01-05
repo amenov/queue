@@ -1,0 +1,27 @@
+{
+  "name": "amenov.queue.js",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/amenov/queue.js.git"
+  },
+  "keywords": [
+    "redis",
+    "queue"
+  ],
+  "author": "Amenov Abdulsalam <amenov.abdulsalam@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/amenov/queue.js/issues"
+  },
+  "homepage": "https://github.com/amenov/queue.js#readme",
+  "dependencies": {
+    "moment": "^2.29.1",
+    "redis": "^3.0.2"
+  }
+}
