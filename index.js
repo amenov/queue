@@ -80,6 +80,8 @@ const start = (options) => {
                   console.log('Job finished: ' + key);
                 }
               } catch (err) {
+                redisClient.del(key);
+
                 if (options.logging) {
                   console.log('Job failed: ' + key);
                 }
