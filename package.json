@@ -1,5 +1,5 @@
 {
-  "name": "amenov.queue.js",
+  "name": "amenov.queuejs",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -8,7 +8,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/amenov/queue.js.git"
+    "url": "git+https://github.com/amenov/queuejs.git"
   },
   "keywords": [
     "redis",
@@ -17,9 +17,9 @@
   "author": "Amenov Abdulsalam <amenov.abdulsalam@gmail.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/amenov/queue.js/issues"
+    "url": "https://github.com/amenov/queuejs/issues"
   },
-  "homepage": "https://github.com/amenov/queue.js#readme",
+  "homepage": "https://github.com/amenov/queuejs#readme",
   "dependencies": {
     "moment": "^2.29.1",
     "redis": "^3.0.2"
