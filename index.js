@@ -63,27 +63,35 @@ const start = (options) => {
     try {
       const keys = await redisKeys(prefix + '*');
 
-      console.log(keys);
-
       if (keys.length) {
         for (const key of keys) {
           try {
             const value = JSON.parse(await redisGet(key));
 
-            if (!value.options.deadLine) {
+            const executor = async () => {
               const handler = require(options.jobs + value.filename);
 
-              handler(...value.options.args);
-
-              redisClient.del(key);
-            } else {
-              if (moment().isAfter(value.options.deadLine)) {
-                const handler = require(options.jobs + value.filename);
-
-                handler(...value.options.args);
+              try {
+                await handler(...value.options.args);
 
                 redisClient.del(key);
+
+                if (options.logging) {
+                  console.log('Job finished: ' + key);
+                }
+              } catch (err) {
+                if (options.logging) {
+                  console.log('Job failed: ' + key);
+                }
+
+                console.log(err);
               }
+            };
+
+            if (!value.options.deadLine) {
+              await executor();
+            } else if (moment().isAfter(value.options.deadLine)) {
+              await executor();
             }
           } catch (err) {
             console.log(err);
@@ -93,7 +101,7 @@ const start = (options) => {
     } catch (err) {
       console.log(err);
     }
-  }, 1000);
+  }, options.interval ?? 1000);
 };
 
 module.exports = { add, start };
