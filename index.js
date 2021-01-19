@@ -1,7 +1,9 @@
 const redis = require('redis');
 const moment = require('moment');
 
-const redisClient = redis.createClient({ host: 'redis' });
+const redisClient = redis.createClient({
+  host: process.env.REDIS_HOST ?? '127.0.0.1',
+});
 
 const prefix = 'queue:';
 
