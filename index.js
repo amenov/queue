@@ -3,6 +3,7 @@ const moment = require('moment');
 
 const redisClient = redis.createClient({
   host: process.env.REDIS_HOST ?? '127.0.0.1',
+  port: process.env.REDIS_PORT ?? '6379',
 });
 
 const prefix = 'queue:';
@@ -36,7 +37,7 @@ const add = async (filename, options) => {
     options.args = [];
   }
 
-  if (moment().isBefore(options.deadLine)) {
+  if (!options.deadLine || moment().isBefore(options.deadLine)) {
     const keyStart = prefix + filename;
 
     if (options.label && options.deletePrev) {
@@ -92,9 +93,10 @@ const start = (options) => {
               }
             };
 
-            if (!value.options.deadLine) {
-              await executor();
-            } else if (moment().isAfter(value.options.deadLine)) {
+            if (
+              !value.options.deadLine ||
+              moment().isAfter(value.options.deadLine)
+            ) {
               await executor();
             }
           } catch (err) {
