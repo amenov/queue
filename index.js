@@ -6,7 +6,7 @@ const redisClient = redis.createClient({
   port: process.env.REDIS_PORT ?? '6379',
 });
 
-const prefix = 'queue:';
+const prefix = (process.env.REDIS_PREFIX ?? '') + 'queue:';
 
 const redisKeys = async (pattern) => {
   return await new Promise((resolve, reject) => {
