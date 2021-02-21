@@ -1,106 +1,133 @@
-const redis = require('redis');
+const redis = require('amenov.redis');
 const moment = require('moment');
 
-const redisClient = redis.createClient({
-  host: process.env.REDIS_HOST ?? '127.0.0.1',
-  port: process.env.REDIS_PORT ?? '6379',
-});
+const { createKey, redisSet, redisGet, redisKeys, redisDel } = redis();
 
-const prefix = (process.env.REDIS_PREFIX ?? '') + 'queue:';
+const prefix = 'queue:';
 
-const redisKeys = async (pattern) => {
-  return await new Promise((resolve, reject) => {
-    redisClient.keys(pattern, (err, data) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(data);
-      }
-    });
-  });
-};
+/*
+  @ADD
+  
+  filename: String
+  options: Object
+    - args?: Array
+    - label?: String
+    - deadLine?: String:DateTime
+    - deletePrev?: Boolean
+*/
+const add = async (filename, options = {}) => {
+  const keyStart = prefix + filename;
 
-const redisGet = async (key) => {
-  return await new Promise((resolve, reject) => {
-    redisClient.get(key, (err, data) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(data);
-      }
-    });
-  });
-};
+  // DELETE-PREV
+  if (options.label && options.deletePrev) {
+    try {
+      const keys = await redisKeys(`${keyStart}*${options.label}*`);
 
-const add = async (filename, options) => {
-  if (!options.args) {
-    options.args = [];
-  }
-
-  if (!options.deadLine || moment().isBefore(options.deadLine)) {
-    const keyStart = prefix + filename;
-
-    if (options.label && options.deletePrev) {
-      try {
-        const keys = await redisKeys(`${keyStart}*${options.label}*`);
-
-        if (keys.length) {
-          redisClient.del(keys);
-        }
-      } catch (err) {
-        console.log(err);
-      }
+      if (keys.length) redisDel(keys, false);
+    } catch (err) {
+      console.log(err);
     }
-
-    const label = options.label ? '_' + options.label : '';
-
-    redisClient.set(
-      keyStart + `_${moment().valueOf()}` + label,
-      JSON.stringify({ filename, options })
-    );
   }
+
+  const label = options.label ? '_' + options.label : '';
+  const key = keyStart + `_${moment().valueOf()}` + label;
+
+  redisSet(key, JSON.stringify({ filename, options }));
 };
 
+/*
+  @EXECUTOR
+  
+  options: Object
+    - jobs: String:Path
+    - logging?: Boolean
+    - interval?: Number
+  key: String
+  value: Object
+    - filename: String
+    - options: Object
+      - args?: Array
+      - label?: String
+      - deadLine?: String:DateTime
+      - deletePrev?: Boolean
+*/
+const executor = async (options, key, value) => {
+  const logging = (msg) => {
+    if (options.logging) console.log(msg);
+  };
+
+  const job = require(options.jobs + value.filename);
+
+  try {
+    await job(...(value.options.args ?? []));
+
+    logging('Job finished: ' + createKey(key));
+  } catch (err) {
+    logging('Job failed: ' + createKey(key));
+
+    console.log(err);
+  }
+
+  redisDel(key, false);
+};
+
+/*
+  @START
+
+  options: Object
+    - jobs: String:Path
+    - logging?: Boolean
+    - interval?: Number
+*/
 const start = (options) => {
   setInterval(async () => {
     try {
       const keys = await redisKeys(prefix + '*');
 
       if (keys.length) {
+        const high = [];
+        const middle = [];
+        const low = [];
+
         for (const key of keys) {
           try {
-            const value = JSON.parse(await redisGet(key));
-
-            const executor = async () => {
-              const handler = require(options.jobs + value.filename);
-
-              try {
-                await handler(...value.options.args);
-
-                redisClient.del(key);
-
-                if (options.logging) {
-                  console.log('Job finished: ' + key);
-                }
-              } catch (err) {
-                redisClient.del(key);
-
-                if (options.logging) {
-                  console.log('Job failed: ' + key);
-                }
-
-                console.log(err);
-              }
-            };
+            const value = JSON.parse(await redisGet(key, false));
 
             if (
               !value.options.deadLine ||
               moment().isAfter(value.options.deadLine)
             ) {
-              await executor();
+              if (value.options.priority) {
+                switch (value.options.priority) {
+                  case 'high':
+                    high.push([key, value]);
+                    break;
+
+                  case 'middle':
+                    middle.push([key, value]);
+                    break;
+
+                  case 'low':
+                    low.push([key, value]);
+                    break;
+
+                  default:
+                    break;
+                }
+              } else {
+                executor(options, key, value);
+              }
             }
           } catch (err) {
             console.log(err);
+          }
+        }
+
+        const queue = [...high, ...middle, ...low];
+
+        if (queue.length) {
+          for (const [key, value] of queue) {
+            executor(options, key, value);
           }
         }
       }
