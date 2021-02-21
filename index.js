@@ -1,7 +1,7 @@
 const redis = require('amenov.redis');
 const moment = require('moment');
 
-const { createKey, redisSet, redisGet, redisKeys, redisDel } = redis();
+const { redisSet, redisGet, redisKeys, redisDel } = redis();
 
 const prefix = 'queue:';
 
@@ -61,9 +61,9 @@ const executor = async (options, key, value) => {
   try {
     await job(...(value.options.args ?? []));
 
-    logging('Job finished: ' + createKey(key));
+    logging('Job finished: ' + key);
   } catch (err) {
-    logging('Job failed: ' + createKey(key));
+    logging('Job failed: ' + key);
 
     console.log(err);
   }
