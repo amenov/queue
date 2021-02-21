@@ -115,7 +115,7 @@ const start = (options) => {
                     break;
                 }
               } else {
-                executor(options, key, value);
+                await executor(options, key, value);
               }
             }
           } catch (err) {
@@ -127,7 +127,7 @@ const start = (options) => {
 
         if (queue.length) {
           for (const [key, value] of queue) {
-            executor(options, key, value);
+            await executor(options, key, value);
           }
         }
       }
