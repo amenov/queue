@@ -1,5 +1,5 @@
 {
-  "name": "amenov.queuejs",
+  "name": "amenov.queue",
   "version": "1.0.8",
   "description": "",
   "main": "index.js",
@@ -21,7 +21,7 @@
   },
   "homepage": "https://github.com/amenov/queuejs#readme",
   "dependencies": {
-    "moment": "^2.29.1",
-    "amenov.redis": "^1.0.2"
+    "amenov.redis": "^1.1.0",
+    "moment": "^2.29.1"
   }
 }

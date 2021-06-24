@@ -1,9 +1,7 @@
-const redis = require('amenov.redis');
-const moment = require('moment');
+const redis = require('amenov.redis')()
+const moment = require('moment')
 
-const { redisSet, redisGet, redisKeys, redisDel } = redis();
-
-const prefix = 'queue:';
+const prefix = 'queue:'
 
 /*
   @ADD
@@ -16,24 +14,24 @@ const prefix = 'queue:';
     - deletePrev?: Boolean
 */
 const add = async (filename, options = {}) => {
-  const keyStart = prefix + filename;
+  const keyStart = prefix + filename
 
   // DELETE-PREV
   if (options.label && options.deletePrev) {
     try {
-      const keys = await redisKeys(`${keyStart}*${options.label}*`);
+      const keys = await redis.keys(`${keyStart}*${options.label}*`)
 
-      if (keys.length) redisDel(keys, false);
+      if (keys.length) redis.del(keys, false)
     } catch (err) {
-      console.log(err);
+      console.log(err)
     }
   }
 
-  const label = options.label ? '_' + options.label : '';
-  const key = keyStart + `_${moment().valueOf()}` + label;
+  const label = options.label ? '_' + options.label : ''
+  const key = keyStart + `_${moment().valueOf()}` + label
 
-  redisSet(key, JSON.stringify({ filename, options }));
-};
+  redis.set(key, JSON.stringify({ filename, options }))
+}
 
 /*
   @EXECUTOR
@@ -53,23 +51,23 @@ const add = async (filename, options = {}) => {
 */
 const executor = async (options, key, value) => {
   const logging = (msg) => {
-    if (options.logging) console.log(msg);
-  };
-
-  const job = require(options.jobs + value.filename);
-
-  try {
-    await job(...(value.options.args ?? []));
-
-    logging('Job finished: ' + key);
-  } catch (err) {
-    logging('Job failed: ' + key);
-
-    console.log(err);
+    if (options.logging) console.log(msg)
   }
 
-  redisDel(key, false);
-};
+  const job = require(options.jobs + value.filename)
+
+  try {
+    await job(...(value.options.args ?? []))
+
+    logging('Job finished: ' + key)
+  } catch (err) {
+    logging('Job failed: ' + key)
+
+    console.log(err)
+  }
+
+  redis.del(key, false)
+}
 
 /*
   @START
@@ -82,16 +80,16 @@ const executor = async (options, key, value) => {
 const start = (options) => {
   setInterval(async () => {
     try {
-      const keys = await redisKeys(prefix + '*');
+      const keys = await redis.keys(prefix + '*')
 
       if (keys.length) {
-        const high = [];
-        const middle = [];
-        const low = [];
+        const high = []
+        const middle = []
+        const low = []
 
         for (const key of keys) {
           try {
-            const value = JSON.parse(await redisGet(key, false));
+            const value = JSON.parse(await redis.get(key, false))
 
             if (
               !value.options.deadLine ||
@@ -100,41 +98,41 @@ const start = (options) => {
               if (value.options.priority) {
                 switch (value.options.priority) {
                   case 'high':
-                    high.push([key, value]);
-                    break;
+                    high.push([key, value])
+                    break
 
                   case 'middle':
-                    middle.push([key, value]);
-                    break;
+                    middle.push([key, value])
+                    break
 
                   case 'low':
-                    low.push([key, value]);
-                    break;
+                    low.push([key, value])
+                    break
 
                   default:
-                    break;
+                    break
                 }
               } else {
-                await executor(options, key, value);
+                await executor(options, key, value)
               }
             }
           } catch (err) {
-            console.log(err);
+            console.log(err)
           }
         }
 
-        const queue = [...high, ...middle, ...low];
+        const queue = [...high, ...middle, ...low]
 
         if (queue.length) {
           for (const [key, value] of queue) {
-            await executor(options, key, value);
+            await executor(options, key, value)
           }
         }
       }
     } catch (err) {
-      console.log(err);
+      console.log(err)
     }
-  }, options.interval ?? 1000);
-};
+  }, options.interval ?? 1000)
+}
 
-module.exports = { add, start };
+module.exports = { add, start }
